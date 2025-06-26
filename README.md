@@ -2,9 +2,7 @@
 
 A comprehensive interactive dashboard for heart disease data analysis, preprocessing, and machine learning modeling using Streamlit.
 
-## 📋 Table of Contents
-- [Overview](#overview)
-- [Features](#features)
+## Table of Contents
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Running the Application](#running-the-application)
@@ -13,24 +11,6 @@ A comprehensive interactive dashboard for heart disease data analysis, preproces
 - [Dataset](#dataset)
 - [Technologies Used](#technologies-used)
 - [Troubleshooting](#troubleshooting)
-
-## Overview
-
-This project provides an interactive web-based platform for analyzing heart disease data using various data mining and machine learning techniques. The application offers comprehensive data preprocessing, quality assessment, exploratory data analysis, and automated model training capabilities.
-
-## Features
-
-- **Interactive Dashboard**: Netflix-styled UI built with Streamlit
-- **Data Quality Assessment**: Comprehensive data validation and quality metrics
-- **Exploratory Data Analysis**: Interactive visualizations and statistical analysis
-- **Data Preprocessing Pipeline**: Multiple preprocessing options including:
-  - Null value handling (intelligent imputation, row removal)
-  - Outlier detection and handling (capping, removal)
-  - Categorical encoding (one-hot, label encoding)
-- **Automated ML Pipeline**: Tests all combinations of preprocessing methods with multiple models
-- **Model Training & Evaluation**: Support for SVM, Random Forest, and XGBoost
-- **Feature Analysis**: Correlation analysis and feature importance visualization
-- **Portfolio Showcase**: Demonstrates various data mining techniques
 
 ## Prerequisites
 
