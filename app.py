@@ -1792,14 +1792,143 @@ def create_portfolio_showcase_page():
                     hierarchy_data,
                     path=['sex', 'cp', 'num'],
                     values='count',
+                    title="Hierarchical Analysis: Patient Risk Factors"
+                )
+                fig_sunburst.update_layout(
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    font_color='white'
                 )
                 st.plotly_chart(fig_sunburst, use_container_width=True)
+        
+        elif viz_type == "3D Surface Plot":
+            # 3D Surface plot for exploring relationships between three numeric variables
+            st.markdown("#### 3D Surface Analysis: Multi-Variable Relationships")
+            
+            # Get numeric columns for 3D plotting
+            numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            if len(numeric_cols) >= 3:
+                # Let user select variables for x, y, and z axes
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    x_var = st.selectbox("X-axis variable", numeric_cols, key="3d_x")
+                with col2:
+                    y_var = st.selectbox("Y-axis variable", [col for col in numeric_cols if col != x_var], key="3d_y")
+                with col3:
+                    z_var = st.selectbox("Z-axis variable", [col for col in numeric_cols if col not in [x_var, y_var]], key="3d_z")
+                
+                # Clean data for 3D plotting
+                df_clean = df[[x_var, y_var, z_var]].dropna()
+                
+                if len(df_clean) > 0:
+                    # Create 3D scatter plot with surface overlay
+                    fig_3d = go.Figure()
+                    
+                    # Add scatter points colored by target if available
+                    if 'num' in df.columns:
+                        colors = df_clean.index.map(lambda x: df.loc[x, 'num'] if x in df.index else 0)
+                        scatter_3d = go.Scatter3d(
+                            x=df_clean[x_var],
+                            y=df_clean[y_var],
+                            z=df_clean[z_var],
+                            mode='markers',
+                            marker=dict(
+                                size=5,
+                                color=colors,
+                                colorscale='RdYlBu',
+                                opacity=0.8,
+                                colorbar=dict(title="Heart Disease")
+                            ),
+                            text=[f"{x_var}: {x:.2f}<br>{y_var}: {y:.2f}<br>{z_var}: {z:.2f}" 
+                                  for x, y, z in zip(df_clean[x_var], df_clean[y_var], df_clean[z_var])],
+                            hovertemplate='<b>%{text}</b><extra></extra>',
+                            name='Data Points'
+                        )
+                    else:
+                        scatter_3d = go.Scatter3d(
+                            x=df_clean[x_var],
+                            y=df_clean[y_var],
+                            z=df_clean[z_var],
+                            mode='markers',
+                            marker=dict(
+                                size=5,
+                                color='#e50914',
+                                opacity=0.8
+                            ),
+                            name='Data Points'
+                        )
+                    
+                    fig_3d.add_trace(scatter_3d)
+                    
+                    # Create surface mesh for trend visualization
+                    try:
+                        # Create a mesh grid for surface
+                        x_range = np.linspace(df_clean[x_var].min(), df_clean[x_var].max(), 20)
+                        y_range = np.linspace(df_clean[y_var].min(), df_clean[y_var].max(), 20)
+                        X_mesh, Y_mesh = np.meshgrid(x_range, y_range)
+                        
+                        # Interpolate Z values using simple averaging in grid cells
+                        Z_mesh = np.zeros_like(X_mesh)
+                        for i in range(len(x_range)-1):
+                            for j in range(len(y_range)-1):
+                                mask = ((df_clean[x_var] >= x_range[i]) & (df_clean[x_var] < x_range[i+1]) &
+                                       (df_clean[y_var] >= y_range[j]) & (df_clean[y_var] < y_range[j+1]))
+                                if mask.any():
+                                    Z_mesh[j, i] = df_clean[mask][z_var].mean()
+                                else:
+                                    Z_mesh[j, i] = df_clean[z_var].mean()
+                        
+                        # Add surface
+                        surface = go.Surface(
+                            x=X_mesh,
+                            y=Y_mesh,
+                            z=Z_mesh,
+                            colorscale='Viridis',
+                            opacity=0.3,
+                            name='Trend Surface',
+                            showscale=False
+                        )
+                        fig_3d.add_trace(surface)
+                    except Exception as e:
+                        st.info("Surface interpolation not available for this data configuration.")
+                    
+                    # Update layout
+                    fig_3d.update_layout(
+                        title=f"3D Analysis: {x_var} vs {y_var} vs {z_var}",
+                        scene=dict(
+                            xaxis_title=x_var,
+                            yaxis_title=y_var,
+                            zaxis_title=z_var,
+                            bgcolor="rgba(0,0,0,0)",
+                            xaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(255,255,255,0.2)"),
+                            yaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(255,255,255,0.2)"),
+                            zaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(255,255,255,0.2)")
+                        ),
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        font=dict(color='white'),
+                        height=600
+                    )
+                    
+                    st.plotly_chart(fig_3d, use_container_width=True)
+                    
+                    # Add interpretation
+                    st.markdown("**3D Plot Interpretation:**")
+                    st.markdown(f"- **X-axis ({x_var})**: Range from {df_clean[x_var].min():.2f} to {df_clean[x_var].max():.2f}")
+                    st.markdown(f"- **Y-axis ({y_var})**: Range from {df_clean[y_var].min():.2f} to {df_clean[y_var].max():.2f}")
+                    st.markdown(f"- **Z-axis ({z_var})**: Range from {df_clean[z_var].min():.2f} to {df_clean[z_var].max():.2f}")
+                    st.markdown("- Points are colored by heart disease status (if available)")
+                    st.markdown("- The surface shows the general trend across the three dimensions")
+                else:
+                    st.error("Not enough data points for 3D visualization after removing missing values.")
+            else:
+                st.error("At least 3 numeric columns are required for 3D Surface Plot.")
         
         # Advanced insights and recommendations
         adv_col1, adv_col2 = st.columns(2)
         
         with adv_col1:
-            st.markdown("#### 📊 Advanced Analytics Insights")
+            st.markdown("#### Advanced Analytics Insights")
             st.markdown("These sophisticated visualizations reveal:")
             st.markdown("- **Multi-dimensional patterns** in patient data")
             st.markdown("- **Flow dynamics** between categorical variables") 
@@ -1807,41 +1936,35 @@ def create_portfolio_showcase_page():
             st.markdown("- **Complex correlations** across multiple features")
 
     with adv_col2:
-        st.markdown("#### 🎯 Strategic Recommendations")
+        st.markdown("#### Strategic Recommendations")
 
         recommendations = [
             {
-                "icon": "🏥",
                 "title": "Clinical Focus",
                 "description": "Prioritize screening for patients over 50 with multiple risk factors"
             },
             {
-                "icon": "🤖",
                 "title": "Predictive Analytics",
                 "description": "Implement ML models for early detection and risk assessment"
             },
             {
-                "icon": "📊",
                 "title": "Risk Stratification",
                 "description": "Use cholesterol and blood pressure as key indicators for patient triage"
             },
             {
-                    "icon": "📱",
-                    "title": "Dashboard Implementation",
-                    "description": "Deploy real-time monitoring systems for healthcare providers"
-                },
-                {
-                    "icon": "🔄",
-                    "title": "Continuous Learning",
-                    "description": "Update models with new patient data for improved accuracy"
-                }
+                "title": "Dashboard Implementation",
+                "description": "Deploy real-time monitoring systems for healthcare providers"
+            },
+            {
+                "title": "Continuous Learning",
+                "description": "Update models with new patient data for improved accuracy"
+            }
             ]
             
         for rec in recommendations:
             st.markdown(f"""
             <div class="business-recommendation-card">
                 <div class="business-rec-header">
-                    <span class="recommendation-icon">{rec['icon']}</span>
                     {rec['title']}
                 </div>
                 <div class="business-rec-content">
@@ -2489,10 +2612,90 @@ def create_automated_pipeline_page():
             </div>
             """, unsafe_allow_html=True)
 
+def create_background_studies_page():
+    """Create background studies page with project information"""
+    st.markdown("""
+    <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #000000 0%, #e50914 100%); border-radius: 4px; margin-bottom: 2rem; border: 1px solid #e50914;">
+        <h1 style="color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-weight: 700; font-size: 2.5rem; margin: 0;">Background Studies</h1>
+        <p style="color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 1.2rem; margin: 1rem 0 0 0;">Project Context, Problem Statement & Objectives</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Background Section
+    st.markdown("## Background")
+    st.markdown("""
+    <div style="background: #1a1a1a; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #e50914; margin-bottom: 2rem;">
+    <p style="color: #ffffff; line-height: 1.8; font-size: 1.1rem;">
+    Heart disease remains a leading cause of mortality worldwide, with early and accurate detection being critical for effective treatment and prevention of fatal outcomes. Traditional diagnostic methods often face challenges such as lack of cardiovascular expertise and high rates of misdiagnosis, especially in regions with limited resources. The increasing availability of digital patient records and medical data, including electrocardiograms (ECG), has enabled the application of machine learning (ML) techniques to support clinical decision-making and improve diagnostic accuracy for heart disease.
+    </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Problem Statement Section
+    st.markdown("## Problem Statement")
+    st.markdown("""
+    <div style="background: #1a1a1a; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ff9800; margin-bottom: 2rem;">
+    <p style="color: #ffffff; line-height: 1.8; font-size: 1.1rem;">
+    Despite advances in medical technology, accurately predicting and diagnosing heart disease is still a significant challenge due to the complexity of cardiovascular conditions, the presence of multiple risk factors, and the issue of imbalanced and noisy clinical data. Many existing approaches struggle with generalizability, data imbalance, and the need for expert-labeled datasets, which can hinder their practical applicability and reliability in real-world clinical settings.
+    </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Objectives Section
+    st.markdown("## Objectives")
+    st.markdown("""
+    <div style="background: #1a1a1a; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #4caf50; margin-bottom: 2rem;">
+    <p style="color: #ffffff; line-height: 1.8; font-size: 1.1rem; margin-bottom: 1rem;">
+    The primary objective of heart disease analysis using machine learning models is to develop robust, accurate, and efficient predictive systems that can assist healthcare professionals in early detection and diagnosis of heart disease. Specifically, these models aim to:
+    </p>
+    <ul style="color: #ffffff; line-height: 1.8; font-size: 1.1rem; margin-left: 1rem;">
+        <li><strong>Leverage diverse clinical and ECG data</strong> to improve diagnostic accuracy</li>
+        <li><strong>Address data imbalance</strong> issues commonly found in medical datasets</li>
+        <li><strong>Optimize feature selection</strong> to identify the most relevant predictors</li>
+        <li><strong>Improve classification performance</strong> through advanced machine learning techniques</li>
+        <li><strong>Reduce misdiagnosis rates</strong> and enhance diagnostic reliability</li>
+        <li><strong>Support timely and effective patient care</strong> through automated screening tools</li>
+        <li><strong>Provide interpretable models</strong> that can assist healthcare professionals in decision-making</li>
+    </ul>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Additional Information
+    st.markdown("## Project Scope")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div style="background: #1a1a1a; padding: 1rem; border-radius: 8px; border: 1px solid #333333; height: 200px;">
+        <h4 style="color: #e50914; margin-top: 0;">Research Focus</h4>
+        <ul style="color: #ffffff; font-size: 0.9rem;">
+            <li>Machine Learning Applications in Healthcare</li>
+            <li>Clinical Decision Support Systems</li>
+            <li>Medical Data Mining and Analysis</li>
+            <li>Predictive Healthcare Analytics</li>
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div style="background: #1a1a1a; padding: 1rem; border-radius: 8px; border: 1px solid #333333; height: 200px;">
+        <h4 style="color: #e50914; margin-top: 0;">Expected Outcomes</h4>
+        <ul style="color: #ffffff; font-size: 0.9rem;">
+            <li>Improved diagnostic accuracy</li>
+            <li>Early disease detection capabilities</li>
+            <li>Reduced healthcare costs</li>
+            <li>Enhanced patient outcomes</li>
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
 def main():
     """Main application function"""
     # Top-level tab navigation for better UX
-    pages = {        "Data Overview": create_data_overview_page,
+    pages = {
+        "Background Studies": create_background_studies_page,
+        "Data Overview": create_data_overview_page,
         "Exploratory Analysis": create_exploratory_analysis_page,
         "Data Quality": create_quality_assessment_page,
         "Automated Pipeline": create_automated_pipeline_page,
